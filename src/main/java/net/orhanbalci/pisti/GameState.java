@@ -8,7 +8,9 @@ import io.vavr.collection.List;
 import io.vavr.control.Either;
 import io.vavr.control.Option;
 import io.vavr.control.Option.Some;
+import net.orhanbalci.pisti.command.InitGameCommand;
 import net.orhanbalci.pisti.command.PlayCardCommand;
+import net.orhanbalci.pisti.command.SeatPlayerCommand;
 import net.orhanbalci.pisti.event.CardPlayedEvent;
 import net.orhanbalci.pisti.event.CardsDealedEvent;
 import net.orhanbalci.pisti.event.CardsExhaustedEvent;
@@ -19,10 +21,12 @@ import net.orhanbalci.pisti.event.GameOverEvent;
 import net.orhanbalci.pisti.event.PlayerSeatedEvent;
 import net.orhanbalci.pisti.event.PointScoredEvent;
 import net.orhanbalci.pisti.event.TurnChangedEvent;
+import net.orhanbalci.pisti.event.Visitor;
+
 import static io.vavr.API.*;
 import net.orhanbalci.pisti.GameStateValidator.ValidationResult;
 
-public class GameState {
+public class GameState implements Visitor<ValidationResult, GameState> {
     private Option<UUID> gameId = Option.none();
     private Option<List<UUID>> players = Option.none();
     private Option<HashMap<UUID, List<Card>>> cards = Option.none();
@@ -31,18 +35,20 @@ public class GameState {
     private Option<List<Card>> undealedCards = Option.none();
     private Option<List<GameEvent>> unpublishedEvents = Option.none();
     private Option<HashMap<UUID, List<List<Card>>>> cardsWon = Option.none();
+    private Option<HashMap<UUID, List<PointType>>> pointsWon = Option.none();
 
     public GameState() {
 
     }
 
-    public static GameState from(GameState other) {
+    private static GameState from(GameState other) {
         return new GameState().withGameId(other.getGameId().getOrNull())
                 .withPlayers(other.getPlayers().getOrElse(List.empty()))
                 .withCards(other.getCards().getOrElse(HashMap.empty()))
                 .withCenterPile(other.getCenterPile().getOrElse(List.empty()))
                 .withCurrentTurnPlayer(other.getCurrentTurnPlayer().getOrNull())
                 .withUndealedCards(other.getUndealedCards().getOrElse(List.empty()))
+                .withPointsWon(other.getPointsWon().getOrElse(HashMap.empty()))
                 .withUnpublishedEvents(other.getUnpublishedEvents().getOrElse(List.empty()));
     }
 
@@ -76,8 +82,13 @@ public class GameState {
         return this;
     }
 
-    public GameState withCardsWon(HashMap<UUID, List<List<Card>>> cardsWon){
+    public GameState withCardsWon(HashMap<UUID, List<List<Card>>> cardsWon) {
         this.cardsWon = Option.of(cardsWon);
+        return this;
+    }
+
+    public GameState withPointsWon(HashMap<UUID, List<PointType>> pointsWon) {
+        this.pointsWon = Option.of(pointsWon);
         return this;
     }
 
@@ -114,8 +125,12 @@ public class GameState {
         return currentTurnPlayer;
     }
 
-    public Option<HashMap<UUID,List<List<Card>>>> getCardsWon(){
+    public Option<HashMap<UUID, List<List<Card>>>> getCardsWon() {
         return cardsWon;
+    }
+
+    public Option<HashMap<UUID, List<PointType>>> getPointsWon() {
+        return pointsWon;
     }
 
     public Either<ValidationResult, GameState> applyEvent(GameInitedEvent gameInited) {
@@ -126,18 +141,15 @@ public class GameState {
     }
 
     public Either<ValidationResult, GameState> applyEvent(CardPlayedEvent cardPlayed) {
-        return Match(GameStateValidator.validateCardOnPlayer(this, cardPlayed.getPlayerId(), cardPlayed.getCard())).of(
-            Case($(ValidationResult.Succesfull), Either.right(
-                GameState.from(this)
-                    .withCenterPile(this.getCenterPile().getOrElse(List.empty()).append(cardPlayed.getCard()))
-                    .withCards(this.getCards().getOrElse(HashMap.empty()).replaceValue(cardPlayed.getPlayerId(), 
-                        this.getCards().getOrElse(HashMap.empty()).get(cardPlayed.getPlayerId()).getOrElse(List.empty()).append(cardPlayed.getCard())
-                    ))
-                    .withUnpublishedEvents(this.getUnpublishedEvents().getOrElse(List.empty()).append(cardPlayed))
+        return Match(GameStateValidator.validateCardOnPlayer(this, cardPlayed.getPlayerId(), cardPlayed.getCard()))
+                .of(Case($(ValidationResult.Succesfull), Either.right(GameState.from(this)
+                        .withCenterPile(this.getCenterPile().getOrElse(List.empty()).append(cardPlayed.getCard()))
+                        .withCards(this.getCards().getOrElse(HashMap.empty()).replaceValue(cardPlayed.getPlayerId(),
+                                this.getCards().getOrElse(HashMap.empty()).get(cardPlayed.getPlayerId())
+                                        .getOrElse(List.empty()).append(cardPlayed.getCard())))
+                        .withUnpublishedEvents(this.getUnpublishedEvents().getOrElse(List.empty()).append(cardPlayed))
 
-            )),
-            Case($(), (err) -> Either.left(err))
-        );        
+                )), Case($(), (err) -> Either.left(err)));
     }
 
     public Either<ValidationResult, GameState> applyEvent(CardsDealedEvent cardsDealed) {
@@ -167,40 +179,57 @@ public class GameState {
         }
     }
 
-    public GameState applyEvent(CardsExhaustedEvent cardsExhausted) {
-        return this;
+    public Either<ValidationResult, GameState> applyEvent(CardsExhaustedEvent cardsExhausted) {
+        return Either.right(
+            GameState.from(this).withUnpublishedEvents(getUnpublishedEvents().getOrElse(List.empty()).append(cardsExhausted))
+        );
     }
 
-    public Either<ValidationResult,GameState> applyEvent(CardsWonEvent cardWonEvent) {
-        return Either.right(GameState.from(this)
-            .withCenterPile(null)
-            .withCardsWon(this.getCardsWon()
-                                .getOrElse(HashMap.empty())
-                                .put(cardWonEvent.getPlayerIdWon(), this.getCardsWon()
-                                .getOrElse(HashMap.empty()).getOrElse(cardWonEvent.getPlayerIdWon(), List.empty()).append(cardWonEvent.getCenterPile())))           
-      
-            );
+    public Either<ValidationResult, GameState> applyEvent(CardsWonEvent cardWonEvent) {
+        return Either.right(GameState.from(this).withCenterPile(null)
+                .withCardsWon(this.getCardsWon().getOrElse(HashMap.empty()).put(cardWonEvent.getPlayerIdWon(),
+                        this.getCardsWon().getOrElse(HashMap.empty())
+                                .getOrElse(cardWonEvent.getPlayerIdWon(), List.empty())
+                                .append(cardWonEvent.getCenterPile())))
 
-    }
-
-    public GameState applyEvent(GameOverEvent gameOver) {
-        return null;
+        );
 
     }
 
-    public GameState applyEvent(PlayerSeatedEvent playerSeated) {
-        return null;
+    public Either<ValidationResult,GameState> applyEvent(GameOverEvent gameOver) {
+        return Either.right(
+            GameState.from(this).withUnpublishedEvents(getUnpublishedEvents().getOrElse(List.empty()).append(gameOver))
+        );
+    }
+
+    public Either<ValidationResult, GameState> applyEvent(PlayerSeatedEvent playerSeated) {
+        return Match(GameStateValidator.validateEnoughSpaceForPlayer(this)).of(
+                Case($(ValidationResult.Succesfull),
+                        Either.right(GameState.from(this).withPlayers(playerSeated.getPlayers()).withUnpublishedEvents(
+                                this.getUnpublishedEvents().getOrElse(List.empty()).append(playerSeated)))),
+                Case($(), (err) -> Either.left(err)));
+    }
+
+    public Either<ValidationResult, GameState> applyEvent(PointScoredEvent pointsScored) {
+        return Either.right(GameState.from(this).withPointsWon(this.getPointsWon().getOrElse(HashMap.empty())
+                .replaceValue(pointsScored.getPlayerId(), this.getPointsWon().getOrElse(HashMap.empty())
+                        .getOrElse(pointsScored.getPlayerId(), List.empty()).appendAll(pointsScored.getPoints())))
+                .withUnpublishedEvents(getUnpublishedEvents().getOrElse(List.empty()).append(pointsScored)));
 
     }
 
-    public GameState applyEvent(PointScoredEvent pointsScored) {
-        return null;
-
+    public Either<ValidationResult,GameState> applyEvent(TurnChangedEvent turnChanged) {
+        return Either.right(
+                GameState.from(this).withCurrentTurnPlayer(turnChanged.getNextPlayerId())
+                        .withUnpublishedEvents(getUnpublishedEvents().getOrElse(List.empty()).append(turnChanged))
+        );
     }
 
-    public GameState applyEvent(TurnChangedEvent turnChanged) {
-        return null;
-
+    public Either<ValidationResult, GameState> applyEvents(List<GameEvent> events){
+        if(events.isEmpty())
+            return Either.right(this);
+        
+        return events.head().allowVisit(this).flatMap(gs -> gs.applyEvents(events.pop()));
     }
 
     private List<GameEvent> handleCommandInner(PlayCardCommand playCard) {
@@ -212,8 +241,78 @@ public class GameState {
 
     }
 
-    public GameState markAsPublished() {
-        return null;
+    public GameState handleCommand(InitGameCommand initGame){
+        GameInitedEvent initedEvent = new GameInitedEvent(initGame.getGameId());
+        return applyEvent(initedEvent).getOrElseGet(l -> {
+            System.out.println("Error in handleCommand InitGameCommand " + l);
+            return this;
+        });
     }
+
+    public GameState handleCommand(SeatPlayerCommand seatPlayer){
+        PlayerSeatedEvent playerSeatedEvent = new PlayerSeatedEvent(seatPlayer.getGameId(),
+                getPlayers().getOrElse(List.empty()).append(seatPlayer.getPlayerId()));
+        return applyEvent(playerSeatedEvent).getOrElseGet(l -> {
+            System.out.println("Error in handleCommand SeatPlayerCommand " + l);
+            return this;
+        });       
+    }
+
+    public GameState markAsPublished() {
+        return GameState.from(this).withUnpublishedEvents(null);
+    }
+
+    @Override
+    public Either<ValidationResult, GameState> visit(CardPlayedEvent event) {
+        return this.applyEvent(event);
+    }
+
+    @Override
+    public Either<ValidationResult, GameState> visit(CardsDealedEvent event) {
+        return this.applyEvent(event);        
+    }
+
+    @Override
+    public Either<ValidationResult, GameState> visit(CardsExhaustedEvent event) {
+        return this.applyEvent(event);
+        
+    }
+
+    @Override
+    public Either<ValidationResult, GameState> visit(CardsWonEvent event) {
+        return this.applyEvent(event);
+        
+    }
+
+    @Override
+    public Either<ValidationResult, GameState> visit(GameInitedEvent event) {
+        return this.applyEvent(event);
+        
+    }
+
+    @Override
+    public Either<ValidationResult, GameState> visit(GameOverEvent event) {
+        return this.applyEvent(event);
+        
+    }
+
+    @Override
+    public Either<ValidationResult, GameState> visit(PlayerSeatedEvent event) {
+        return this.applyEvent(event);
+        
+    }
+
+    @Override
+    public Either<ValidationResult, GameState> visit(PointScoredEvent event) {
+        return this.applyEvent(event);
+        
+    }
+
+    @Override
+    public Either<ValidationResult, GameState> visit(TurnChangedEvent event) {
+        return this.applyEvent(event);
+        
+    }
+
 
 }

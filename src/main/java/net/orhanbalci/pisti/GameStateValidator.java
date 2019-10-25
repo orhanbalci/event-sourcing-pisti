@@ -13,6 +13,7 @@ public class GameStateValidator {
         PlayerPileNotEmpty("Oyuncuda kart var kart dagitamazsiniz"), 
         GameInitedBefore("Oyun onceden ilklendirilmis"),
         CardNotOnPlayer("Kart oyuncuda degil"), 
+        NoSpaceForPlayer("Oyun yeni oyuncu alimina kapali"),
         Succesfull("Kontrol basarili")
 
         ;
@@ -49,5 +50,12 @@ public class GameStateValidator {
             return ValidationResult.Succesfull;
         } else
             return ValidationResult.CardNotOnPlayer;
+    }
+
+    public static ValidationResult validateEnoughSpaceForPlayer(GameState gs){
+        if(gs.getPlayers().getOrElse(List.empty()).length() < 4)
+            return ValidationResult.Succesfull;
+        else
+            return ValidationResult.NoSpaceForPlayer;
     }
 }

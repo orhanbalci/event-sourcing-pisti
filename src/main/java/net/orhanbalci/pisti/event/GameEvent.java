@@ -2,7 +2,11 @@ package net.orhanbalci.pisti.event;
 
 import java.util.UUID;
 
-public abstract class GameEvent {
+import io.vavr.control.Either;
+import net.orhanbalci.pisti.GameState;
+import net.orhanbalci.pisti.GameStateValidator.ValidationResult;
+
+public abstract class GameEvent implements Visitable<ValidationResult, GameState>{
     private final UUID eventId = UUID.randomUUID();
     protected UUID gameId;
 
@@ -13,5 +17,8 @@ public abstract class GameEvent {
     public UUID getEventId() {
         return eventId;
     }
-    
+
+    public UUID getGameId(){
+        return gameId;
+    }
 }

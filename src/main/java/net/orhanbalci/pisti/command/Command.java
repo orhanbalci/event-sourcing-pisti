@@ -2,7 +2,7 @@ package net.orhanbalci.pisti.command;
 
 import java.util.UUID;
 
-abstract class Command {
+public abstract class Command {
     private final UUID commandId = UUID.randomUUID();
     private UUID gameId;
 
