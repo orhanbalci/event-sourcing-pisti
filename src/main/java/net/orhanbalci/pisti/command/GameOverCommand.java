@@ -4,8 +4,7 @@ import java.util.UUID;
 
 public class GameOverCommand extends Command {
 
-    public GameOverCommand(UUID gameId) {
-        super(gameId);
-    }
-
+  public GameOverCommand(UUID gameId) {
+    super(gameId);
+  }
 }
