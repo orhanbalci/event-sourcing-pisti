@@ -16,6 +16,7 @@ import net.orhanbalci.pisti.event.GameOverEvent;
 import net.orhanbalci.pisti.event.PlayerSeatedEvent;
 import net.orhanbalci.pisti.event.PointScoredEvent;
 import net.orhanbalci.pisti.player.PlayerAgent;
+import net.orhanbalci.pisti.player.SmartPlayer;
 
 public class Game {
 
@@ -56,13 +57,13 @@ public class Game {
       // UUID.randomUUID());
       agents[1] =
           constructPlayer(
-              dummyPlayerClass, eventBus, UUID.randomUUID()); // new DummyPlayer(commandBus,
+              smartPlayerClass, eventBus, UUID.randomUUID()); // new DummyPlayer(commandBus,
       // UUID.randomUUID());
       agents[2] =
           constructPlayer(
               dummyPlayerClass, eventBus, UUID.randomUUID()); // new DummyPlayer(commandBus,
       // UUID.randomUUID());
-      agents[3] = constructPlayer(dummyPlayerClass, eventBus, UUID.randomUUID());
+      agents[3] = constructPlayer(smartPlayerClass, eventBus, UUID.randomUUID());
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | SecurityException
@@ -70,7 +71,6 @@ public class Game {
         | IllegalAccessException
         | IllegalArgumentException
         | InvocationTargetException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
     } // new DummyPlayer(commandBus, UUID.randomUUID());
     for (PlayerAgent agent : agents) {
@@ -143,9 +143,21 @@ public class Game {
 
   @Subscribe
   public void handleEvent(GameOverEvent gameOver) {
+    String winnerType = "";
+    for (PlayerAgent playerAgent : agents) {
+      if (playerAgent.getId() == gameOver.getWinnerPlayer()) {
+        if (playerAgent instanceof SmartPlayer) {
+          winnerType = "SMART";
+        } else {
+          winnerType = "DUMMY";
+        }
+      }
+    }
+    gameOver.setWinnerType(winnerType);
     scoreBus.post(gameOver);
+    gameCount -= 1;
+
     if (gameCount > 0) {
-      gameCount -= 1;
       restartGame();
     }
   }

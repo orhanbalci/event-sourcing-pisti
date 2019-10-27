@@ -7,6 +7,7 @@ import net.orhanbalci.pisti.GameStateValidator.ValidationResult;
 
 public class GameOverEvent extends GameEvent {
   private UUID winnerPlayerId;
+  private String winnerType = "";
 
   public GameOverEvent(UUID gameId, UUID winnerPlayerId) {
     super(gameId);
@@ -15,6 +16,14 @@ public class GameOverEvent extends GameEvent {
 
   public UUID getWinnerPlayer() {
     return winnerPlayerId;
+  }
+
+  public String getWinnerType() {
+    return winnerType;
+  }
+
+  public void setWinnerType(String winnerType) {
+    this.winnerType = winnerType;
   }
 
   @Override
