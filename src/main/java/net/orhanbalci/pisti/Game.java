@@ -6,8 +6,8 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 
 import io.vavr.collection.List;
-import net.orhanbalci.pisti.command.InitGameCommand;
-import net.orhanbalci.pisti.command.SeatPlayerCommand;
+import net.orhanbalci.pisti.event.CardPlayedEvent;
+import net.orhanbalci.pisti.event.CardsWonEvent;
 import net.orhanbalci.pisti.event.EventStorage;
 import net.orhanbalci.pisti.event.GameEvent;
 import net.orhanbalci.pisti.event.GameInitedEvent;
@@ -58,6 +58,35 @@ public class Game {
     }
 
     @Subscribe
+    public void handleCommand(DealCardsCommand dealCards){
+        System.out.println("Game => HandleCommand called " + dealCards.toString());
+        handleUnpublishedEvents(gs.handleCommand(dealCards));
+    }
+
+    @Subscribe
+    public void handleCommand(PlayCardCommand playCard){
+        System.out.println("Game => HandleCommand called " + playCard);
+        handleUnpublishedEvents(gs.handleCommand(playCard));
+    }
+
+    @Subscribe
+    public void handleCommand(WinCardsCommand winCards){
+        System.out.println("Game => HandleCommand called " + winCards);
+        handleUnpublishedEvents(gs.handleCommand(winCards));
+    }
+
+    @Subscribe
+    public void handleCommand(ChangeTurnCommand changeTurn){
+        System.out.println("Game => HandleCommand called " + changeTurn);
+        handleUnpublishedEvents(gs.handleCommand(changeTurn));
+    }
+
+    @Subscribe
+    public void handleCommand(ScorePointCommand scorePoint){
+        System.out.println("Game => HandleCommand called " + scorePoint);
+        handleUnpublishedEvents(gs.handleCommand(scorePoint));
+    }
+    @Subscribe
     public void handleEvent(GameInitedEvent gameInited) {
         System.out.println("Game => HandleEvent called " + gameInited);
         if (gs.getPlayers().getOrElse(List.empty()).isEmpty()){
@@ -74,9 +103,63 @@ public class Game {
         }
         //kartlari dagit
         else{
+            publishCommand(new DealCardsCommand(gs.getGameId().get(), true));
+        }
+    }
 
+    @Subscribe
+    public void handleEvent(CardsWonEvent cardsWon){
+        List<PointType> points = List.of();
+        var cards = cardsWon.getCenterPile();
+        if(cards.length() == 2 && cards.get(0).getNumber() == CardNumber.JACK && cards.get(1).getNumber() == CardNumber.JACK){
+            points  = points.append(PointType.DOUBLE_PISTI);            
         }
 
+        if(cards.length() == 2 && cards.get(0).getNumber() == cards.get(1).getNumber()){
+            points = points.append(PointType.PISTI);            
+        }
+
+       int numberOfAces = cards.filter(c -> c.getNumber() == CardNumber.ACE).length();
+       for(int i = 0; i < numberOfAces; i++){
+           points = points.append(PointType.ACE);
+       }
+
+       int numberOfJacks = cards.filter(c -> c.getNumber() == CardNumber.JACK).length();
+       for(int i = 0; i < numberOfJacks; i++){
+           points = points.append(PointType.JACK);
+       }
+
+       int twoOfClubs = cards.filter(c -> c.getNumber() == CardNumber.TWO && c.getType() == CardType.CLUBS).length();
+       for(int i = 0; i < twoOfClubs; i++){
+           points = points.append(PointType.TWO_OF_CLUBS);
+       }
+
+       int tenOfDiamonds = cards.filter(c -> c.getNumber() == CardNumber.TEN && c.getType() == CardType.DIAMONDS).length();
+       for(int i = 0; i < tenOfDiamonds; i++){
+           points = points.append(PointType.TEN_OF_DIAMONDS);
+       }
+        
+        publishCommand(new ScorePointCommand(cardsWon.getGameId(), cardsWon.getPlayerIdWon(), points));
+    }
+
+    @Subscribe
+    public void handleEvent(CardPlayedEvent cardPlayed){
+
+        if(gs.getCenterPile().getOrElse(List.empty()).length() > 1 &&  gs.getCenterPile().getOrElse(List.empty()).last().getNumber() == CardNumber.JACK){
+            publishCommand(new WinCardsCommand(cardPlayed.getGameId(), cardPlayed.getPlayerId()));
+            return;
+        }
+
+        if(gs.getCenterPile().getOrElse(List.empty()).length() > 1){
+            var lastTwo = gs.getCenterPile().getOrElse(List.empty()).takeRight(2);
+            if(lastTwo.get(0).getNumber() == lastTwo.get(1).getNumber()){
+                publishCommand(new WinCardsCommand(cardPlayed.getGameId(), cardPlayed.getPlayerId()));
+                return;
+            }
+        }
+
+        publishCommand(new ChangeTurnCommand(gs.getGameId().getOrNull()));       
+        
     }
 
     public void handleUnpublishedEvents(GameState newState) {

@@ -12,4 +12,9 @@ public class Card{
     public CardType getType(){return type;}
     public CardNumber getNumber(){return number;}
 
+    @Override
+    public String toString(){
+        return String.format("[%s of %s]", number, type);
+    }
+
 }

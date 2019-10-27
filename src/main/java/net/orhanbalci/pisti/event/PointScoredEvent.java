@@ -11,13 +11,13 @@ import net.orhanbalci.pisti.GameStateValidator.ValidationResult;
 
 public class PointScoredEvent extends GameEvent {
     private UUID playerId;
-    private List<Card> cardsCleared;
+    //private List<Card> cardsCleared;
     private List<PointType> points;
 
-    public PointScoredEvent(UUID gameId, UUID playerId, List<Card> cardsCleared, List<PointType> points) {
+    public PointScoredEvent(UUID gameId, UUID playerId, List<PointType> points) {
         super(gameId);
         this.playerId = playerId;
-        this.cardsCleared = cardsCleared;
+        //this.cardsCleared = cardsCleared;
         this.points = points;
     }
 
@@ -25,9 +25,9 @@ public class PointScoredEvent extends GameEvent {
         return playerId;
     }
 
-    public List<Card> getCardsCleared() {
-        return cardsCleared;
-    }
+    // public List<Card> getCardsCleared() {
+    //     return cardsCleared;
+    // }
 
     public List<PointType> getPoints() {
         return points;
@@ -41,8 +41,8 @@ public class PointScoredEvent extends GameEvent {
     @Override
     public String toString() {
 
-        return String.format("PointScoredEvent(%s %s (%s) (%s))", getGameId(), getPlayerId(),
-                getCardsCleared().foldLeft("", (xs, x) -> String.format("%s,%s", xs, x)),
+        return String.format("PointScoredEvent(%s %s (%s))", getGameId(), getPlayerId(),
+                //getCardsCleared().foldLeft("", (xs, x) -> String.format("%s,%s", xs, x)),
                 getPoints().foldLeft("", (xs, x) -> String.format("%s,%s", xs, x)));
     }
 
