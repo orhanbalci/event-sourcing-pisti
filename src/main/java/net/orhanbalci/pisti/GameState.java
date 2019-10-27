@@ -35,6 +35,7 @@ public class GameState implements Visitor<ValidationResult, GameState> {
         .withUndealedCards(other.getUndealedCards().getOrElse(List.empty()))
         .withPointsWon(other.getPointsWon().getOrElse(HashMap.empty()))
         .withPlayerWon(other.getLastWonPlayer().getOrNull())
+        .withCardsWon(other.getCardsWon().getOrElse(HashMap.empty()))
         .withUnpublishedEvents(other.getUnpublishedEvents().getOrElse(List.empty()));
   }
 

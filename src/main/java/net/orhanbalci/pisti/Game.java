@@ -254,7 +254,16 @@ public class Game {
           publishCommand(
               new WinCardsCommand(gs.getGameId().getOrNull(), gs.getLastWonPlayer().getOrNull()));
         } else {
-          publishCommand(new GameOverCommand(gs.getGameId().getOrNull()));
+          var cardCount =
+              gs.getCardsWon()
+                  .getOrElse(HashMap.empty())
+                  .mapValues(l -> l.map(k -> k.length()).foldLeft(0, (b, i) -> b + i));
+
+          var champ = cardCount.toList().sortBy(t -> t._2).reverse().head();
+          publishCommand(
+              new ScorePointCommand(
+                  gs.getGameId().getOrNull(), champ._1, List.of(PointType.MAJORITY)));
+          // publishCommand(new GameOverCommand(gs.getGameId().getOrNull()));
         }
       } else {
         publishCommand(new DealCardsCommand(gs.getGameId().getOrNull(), false));
@@ -273,7 +282,20 @@ public class Game {
           publishCommand(
               new WinCardsCommand(gs.getGameId().getOrNull(), gs.getLastWonPlayer().getOrNull()));
         } else {
-          publishCommand(new GameOverCommand(gs.getGameId().getOrNull()));
+          if (!pointScored.getPoints().contains(PointType.MAJORITY)) {
+            var cardCount =
+                gs.getCardsWon()
+                    .getOrElse(HashMap.empty())
+                    .mapValues(l -> l.map(k -> k.length()).foldLeft(0, (b, i) -> b + i));
+
+            var champ = cardCount.toList().sortBy(t -> t._2).reverse().head();
+            publishCommand(
+                new ScorePointCommand(
+                    gs.getGameId().getOrNull(), champ._1, List.of(PointType.MAJORITY)));
+
+          } else {
+            publishCommand(new GameOverCommand(gs.getGameId().getOrNull()));
+          }
         }
       } else {
         publishCommand(new DealCardsCommand(gs.getGameId().getOrNull(), false));
