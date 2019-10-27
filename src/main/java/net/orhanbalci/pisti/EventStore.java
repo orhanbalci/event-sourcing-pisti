@@ -13,6 +13,6 @@ public class EventStore {
 
     @Subscribe
     public void handleEventStorage(GameEvent a){
-        System.out.println(String.format("Event Store => %s",a));
+        //System.out.println(String.format("Event Store => %s",a));
     }
 }

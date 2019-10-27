@@ -44,4 +44,8 @@ public abstract class PlayerAgent {
     public void setGameId(Option<UUID> gameId) {
         this.gameId = gameId;
     }
+
+    public void restart(){
+        gameId = Option.none();
+    }
 }

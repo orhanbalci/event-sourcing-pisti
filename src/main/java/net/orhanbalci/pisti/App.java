@@ -3,14 +3,49 @@
  */
 package net.orhanbalci.pisti;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import com.google.common.eventbus.EventBus;
+
 public class App {
     public String getGreeting() {
         return "Hello world.";
     }
 
     public static void main(String[] args) {
-        System.out.println(new App().getGreeting());
-        Game g = new Game();
-        g.startGame();        
+        if (args.length < 4) {
+            System.out.println("Missing arguments");
+        } else {
+            int playerCount = Integer.parseInt(args[0]);
+            int gameCount = Integer.parseInt(args[1]);
+            String dummyPlayerClass = args[2];
+            String smartPlayerClass = args[3];
+
+            EventBus scoreBus = new EventBus();
+            Dashboard dashboard = new Dashboard();
+            scoreBus.register(dashboard);
+
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            CountDownLatch latch = new CountDownLatch(playerCount / 4);
+            for (int i = 0; i < (playerCount / 4); i++) {
+                executor.submit(() -> {                   
+                    Game g = new Game(scoreBus, gameCount, dummyPlayerClass, smartPlayerClass);
+                    g.startGame();
+                    latch.countDown();
+                });
+            }
+
+            executor.shutdown();
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            dashboard.printDashBoard();
+        }
     }
 }

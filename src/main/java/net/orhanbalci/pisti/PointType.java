@@ -13,4 +13,8 @@ public enum PointType{
     private PointType(int points){
         this.points  = points;
     }
+
+    public int getPoints(){
+        return points;
+    }
 }

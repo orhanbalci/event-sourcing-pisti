@@ -3,7 +3,6 @@ package net.orhanbalci.pisti.player;
 import java.util.UUID;
 
 import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
 
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -20,26 +19,31 @@ import net.orhanbalci.pisti.event.PlayerSeatedEvent;
 import net.orhanbalci.pisti.event.PointScoredEvent;
 import net.orhanbalci.pisti.event.TurnChangedEvent;
 
-public class DummyPlayer extends PlayerAgent {
+public class SmartPlayer extends PlayerAgent {
 
+    private List<Card> playedCards = List.empty();
     private EventBus commandBus;
+    private UUID id;
     private Option<List<Card>> cards = Option.none();
 
-    public DummyPlayer(EventBus cb, UUID id) {
+
+    public SmartPlayer(EventBus cb, UUID id){
         this.commandBus = cb;
         this.id = id;
     }
-
     @Override
-    @Subscribe
     public void handle(CardPlayedEvent event) {
         if (event.getGameId() == getGameId().getOrNull() && event.getPlayerId() == getId()) {
             cards = cards.map(c -> c.remove(event.getCard()));
         }
+
+        if(event.getGameId() == getGameId().getOrNull()){
+            playedCards = playedCards.append(event.getCard());
+        }
+
     }
 
     @Override
-    @Subscribe
     public void handle(CardsDealedEvent event) {
         if (event.getGameId() == getGameId().getOrNull() && event.getPlayer().getOrNull() == getId()) {
             if (cards.getOrElse(List.empty()).isEmpty()) {
@@ -48,44 +52,46 @@ public class DummyPlayer extends PlayerAgent {
                 System.out.println("Player cards is not empty can not deal");
             }
         }
+
     }
 
     @Override
-    @Subscribe
     public void handle(CardsExhaustedEvent event) {
+        // TODO Auto-generated method stub
 
     }
 
     @Override
-    @Subscribe
+    public void handle(CardsWonEvent event) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
     public void handle(GameInitedEvent event) {
-        if (gameId.isDefined()) {
-            System.out.println("Player => Game already inited for player " + id);
-        } else {
-            gameId = Option.of(event.getGameId());
-        }
+        // TODO Auto-generated method stub
+
     }
 
     @Override
-    @Subscribe
     public void handle(GameOverEvent event) {
+        // TODO Auto-generated method stub
 
     }
 
     @Override
-    @Subscribe
     public void handle(PlayerSeatedEvent event) {
+        // TODO Auto-generated method stub
 
     }
 
     @Override
-    @Subscribe
     public void handle(PointScoredEvent event) {
+        // TODO Auto-generated method stub
 
     }
 
     @Override
-    @Subscribe
     public void handle(TurnChangedEvent event) {
         if (event.getGameId() == getGameId().getOrNull() && event.getNextPlayerId() == getId()) {
             if(event.getCenterPile().isEmpty()){
@@ -103,11 +109,6 @@ public class DummyPlayer extends PlayerAgent {
                         cards.getOrElse(List.empty()).shuffle().head()));
             }
         }
-    }
-
-    @Override
-    @Subscribe
-    public void handle(CardsWonEvent event) {
 
     }
 
